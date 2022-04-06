@@ -351,6 +351,48 @@ local gridPosUnit = { }
 local hasUnitGrid = { }
 local selectNextFrame, switchedCategory
 
+local function fixLabGrids(grids, start_row, direction)
+	local function fixLabGrid(grid, start_row, direction)
+		local result = {}
+		for r=0,2 do
+			for c=1,4 do
+				local to = ((start_row + (direction == 1 and r or -r) + 3) % 3) * 4 + c
+				local from = r * 4 + c
+				result[to] = grid[from]
+			end
+		end
+		return result
+	end
+	for name, grid in pairs(grids) do
+		grids[name] = fixLabGrid(grid, start_row, direction)
+	end
+end
+
+-- start_row = 0 (bottom), 1 (middle), 2 (top)
+-- direction = 1 (up), -1 (down)
+local function fixUnitGrids(units, start_row, direction)
+	local function fixUnitGrid(grid, start_row, direction)
+		local result = {}
+		for r=0,2 do
+			local to = (start_row + (direction == 1 and r or -r) + 3) % 3
+			Spring.Echo(r .. ' -> ' .. to)
+			-- effin' 1-based indexing
+			result[to + 1] = grid[r + 1]
+		end
+		return result
+	end
+	for name, grid in pairs(units) do
+		for i=1,4 do
+			units[name][i] = fixUnitGrid(grid[i], start_row, direction)
+		end
+	end
+end
+
+Spring.Debug.TableEcho(unitGrids['armcom'])
+fixUnitGrids(unitGrids, 2, -1)
+fixLabGrids(labGrids, 2, -1)
+Spring.Debug.TableEcho(unitGrids['armcom'])
+
 for uname, ugrid in pairs(unitGrids) do
 	local udef = UnitDefNames[uname]
 	local uid = udef.id
@@ -813,7 +855,9 @@ local function gridmenuCategoryHandler(_, _, args, _, isRepeat)
 	if not cIndex or cIndex < 1 or cIndex > 4 then
 		return
 	end
-
+	if currentBuildCategory then
+		return false
+	end
 	if not selectedBuilder or (currentBuildCategory and hotkeyActions['1' .. cIndex]) then
 		return
 	end
@@ -1567,8 +1611,8 @@ function drawGrid(activeArea)
 		end
 	end
 
-	if cellcmds[1] and (selectedBuilder or preGamestartPlayer) and switchedCategory then
-		selectNextFrame = cellcmds[1].id
+	if cellcmds[9] and (selectedBuilder or preGamestartPlayer) and switchedCategory then
+		selectNextFrame = cellcmds[9].id
 	end
 end
 
